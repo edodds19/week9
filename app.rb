@@ -16,10 +16,17 @@ after { puts; }                                                                 
 
 events_table = DB.from(:events)
 rsvps_table = DB.from(:rsvps)
-# users_table = DB.from(:users)
+users_table = DB.from(:users)
+
+before do  
+    @current_user = users_table.where(:id => cookies[:user_id]).to_a[0]
+    puts @current_user.inspect
+end
 
 # Home page (all events)
 get "/" do
+    @current_user = users_table.where(:id => cookies[:user_id]).to_a[0]
+    puts @current_user.inspect
     @events = events_table.all
     view "events"
 end
@@ -59,7 +66,9 @@ end
 
 # Receiving end of new user form
 get "/users/create" do
-    puts params
+    users_table.insert(:name => params["name"],
+                        :email => params["email"],
+                        :password => params["password"])
     view "create_user"
 end
 
@@ -71,7 +80,22 @@ end
 # Receiving end of login form
 get "/logins/create" do
     puts params
-    view "create_login"
+    email = params["email"]
+    password = params["password"]
+    # SELECT * FROM users WHERE email = email_entered
+    user = users_table.where(:email => email_entered).to_a[0]
+    if user
+        puts user.inspect
+        # test the password against the one in the users table
+        if user[:password] == password_entered
+            cookies[:user_id] = user[:id]
+            view "create_login"
+        else
+            view "create_login_failed"
+        end
+    else 
+        view "creat_login_failed"
+    end
 end
 
 # Logout
